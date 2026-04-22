@@ -1,6 +1,8 @@
 package eello.container;
 
 import eello.container.core.BeanDefinition;
+import eello.fixture.meta.MetaComponentBean;
+import eello.fixture.meta.NoMetaComponentBean;
 import eello.fixture.simple.DependentBean;
 import eello.fixture.simple.NonComponentBean;
 import eello.fixture.simple.SimpleBean;
@@ -60,6 +62,30 @@ class ClassPathBeanDefinitionScannerTest {
 
         assertEquals("simpleBean", simpleDef.getBeanName());
         assertEquals(SimpleBean.class, simpleDef.getBeanType());
+    }
+
+    @Test
+    @DisplayName("@Component를 메타 어노테이션으로 가진 어노테이션이 붙은 클래스를 스캔한다")
+    void scan_findsClassWithMetaComponentAnnotation() throws ClassNotFoundException {
+        Set<BeanDefinition> result = scanner.doScan("eello.fixture.meta");
+
+        Set<Class<?>> types = result.stream()
+                .map(BeanDefinition::getBeanType)
+                .collect(Collectors.toSet());
+
+        assertTrue(types.contains(MetaComponentBean.class));
+    }
+
+    @Test
+    @DisplayName("@Component가 메타 어노테이션 체인에 없으면 스캔하지 않는다")
+    void scan_excludesClassWithNonComponentMetaAnnotation() throws ClassNotFoundException {
+        Set<BeanDefinition> result = scanner.doScan("eello.fixture.meta");
+
+        Set<Class<?>> types = result.stream()
+                .map(BeanDefinition::getBeanType)
+                .collect(Collectors.toSet());
+
+        assertFalse(types.contains(NoMetaComponentBean.class));
     }
 
     @Test

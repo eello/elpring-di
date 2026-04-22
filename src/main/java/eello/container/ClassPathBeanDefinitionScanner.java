@@ -5,6 +5,7 @@ import eello.container.core.BeanDefinition;
 import eello.container.core.DefaultBeanDefinition;
 
 import java.io.File;
+import java.lang.annotation.Annotation;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.HashSet;
@@ -23,7 +24,7 @@ public class ClassPathBeanDefinitionScanner {
 		Set<BeanDefinition> beanDefinitions = new HashSet<>();
 
 		for (Class<?> clazz : classes) {
-			if (clazz.isAnnotationPresent(Component.class)) {
+			if (!clazz.isAnnotation() && isComponent(clazz)) {
 				beanDefinitions.add(DefaultBeanDefinition.of(clazz));
 			}
 		}
@@ -53,5 +54,24 @@ public class ClassPathBeanDefinitionScanner {
 		}
 
 		return classes;
+	}
+
+	// clazz 에 적용된 어노테이션들을 재귀적으로 검사해 @Component 가 적용된 경우 true 리턴
+	private boolean isComponent(Class<?> clazz) {
+		if (clazz.isAnnotationPresent(Component.class)) return true;
+
+		for (Annotation annotation : clazz.getAnnotations()) {
+			if (isSystemAnnotation(annotation)) continue;
+			if (isComponent(annotation.annotationType())) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private boolean isSystemAnnotation(Annotation annotation) {
+		String packageName = annotation.annotationType().getPackageName();
+		return packageName.startsWith("java.lang.annotation") ||
+				packageName.startsWith("jakarta.annotation");
 	}
 }
