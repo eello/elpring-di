@@ -1,4 +1,6 @@
-# Lpring 개발 문서
+[![](https://jitpack.io/v/eello/elpring-di.svg)](https://jitpack.io/#eello/elpring-di)
+
+# elpring-di 개발 문서
 
 Spring의 DI 컨테이너 동작 원리를 학습하기 위해 ClassPath Scan과 Reflection을 사용해 직접 구현한 경량 DI 컨테이너입니다.
 
