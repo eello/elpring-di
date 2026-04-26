@@ -3,7 +3,7 @@ package eello.container.core.registry;
 import java.util.HashMap;
 import java.util.Map;
 
-public class DefaultSingletonRegistry implements SingletonBeanRegistry {
+public class DefaultSingletonBeanRegistry implements SingletonBeanRegistry {
 
     private Map<String, Object> singletons = new HashMap<>();
 

@@ -1,12 +1,14 @@
 package eello.container.core;
 
-import eello.container.ClassPathBeanDefinitionScanner;
 import eello.container.exception.NoUniqueBeanDefinitionException;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 
-public class BeanInitializerUsingTopologicalSorting implements BeanInitializer {
+/**
+ * 위상정렬 알고리즘을 사용해 빈 주입 순서 결정
+ */
+public class DefaultBeanInitializer implements BeanInitializer {
 
 	private BeanFactory beanFactory;
 	private ClassPathBeanDefinitionScanner bdScanner;
@@ -15,7 +17,7 @@ public class BeanInitializerUsingTopologicalSorting implements BeanInitializer {
 	private Map<Class<?>, List<Class<?>>> dependsOnMe;
 	private Map<Class<?>, List<BeanDefinition>> beanDefinitionMap;
 
-	public BeanInitializerUsingTopologicalSorting(BeanFactory beanFactory, ClassPathBeanDefinitionScanner bdScanner) {
+	public DefaultBeanInitializer(BeanFactory beanFactory, ClassPathBeanDefinitionScanner bdScanner) {
 		this.beanFactory = beanFactory;
 		this.bdScanner = bdScanner;
 	}

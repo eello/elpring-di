@@ -5,7 +5,8 @@ import eello.app.repository.ARepository;
 import eello.app.service.AService;
 import eello.app.service.BService;
 import eello.app.service.Service;
-import eello.container.core.BeanFactory;
+import eello.container.boot.ElpringApplication;
+import eello.container.context.ApplicationContext;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,11 +16,11 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("Application 통합 테스트")
 class ApplicationIntegrationTest {
 
-    private static BeanFactory context;
+    private static ApplicationContext context;
 
     @BeforeAll
     static void setUp() throws Exception {
-        context = Application.run("eello.app");
+        context = ElpringApplication.run("eello.app");
     }
 
     @Test

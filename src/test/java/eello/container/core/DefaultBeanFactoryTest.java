@@ -2,7 +2,7 @@ package eello.container.core;
 
 import eello.container.annotation.Component;
 import eello.container.annotation.Primary;
-import eello.container.core.registry.DefaultSingletonRegistry;
+import eello.container.core.registry.DefaultSingletonBeanRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -65,7 +65,7 @@ class DefaultBeanFactoryTest {
 
     @BeforeEach
     void setUp() {
-        factory = new DefaultBeanFactory(new DefaultSingletonRegistry());
+        factory = new DefaultBeanFactory(new DefaultSingletonBeanRegistry());
     }
 
     @Nested

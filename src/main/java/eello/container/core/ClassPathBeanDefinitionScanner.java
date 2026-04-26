@@ -1,8 +1,6 @@
-package eello.container;
+package eello.container.core;
 
 import eello.container.annotation.Component;
-import eello.container.core.BeanDefinition;
-import eello.container.core.DefaultBeanDefinition;
 
 import java.io.File;
 import java.lang.annotation.Annotation;

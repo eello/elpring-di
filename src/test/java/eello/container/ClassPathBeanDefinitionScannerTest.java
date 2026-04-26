@@ -1,6 +1,7 @@
 package eello.container;
 
 import eello.container.core.BeanDefinition;
+import eello.container.core.ClassPathBeanDefinitionScanner;
 import eello.fixture.meta.MetaComponentBean;
 import eello.fixture.meta.NoMetaComponentBean;
 import eello.fixture.simple.DependentBean;

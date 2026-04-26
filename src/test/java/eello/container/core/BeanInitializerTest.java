@@ -1,7 +1,6 @@
 package eello.container.core;
 
-import eello.container.ClassPathBeanDefinitionScanner;
-import eello.container.core.registry.DefaultSingletonRegistry;
+import eello.container.core.registry.DefaultSingletonBeanRegistry;
 import eello.container.exception.NoUniqueBeanDefinitionException;
 import eello.fixture.primary.PrimaryConsumer;
 import eello.fixture.primary.PrimaryImplA;
@@ -15,12 +14,12 @@ import static org.junit.jupiter.api.Assertions.*;
 class BeanInitializerTest {
 
     private DefaultBeanFactory beanFactory;
-    private BeanInitializerUsingTopologicalSorting initializer;
+    private DefaultBeanInitializer initializer;
 
     @BeforeEach
     void setUp() {
-        beanFactory = new DefaultBeanFactory(new DefaultSingletonRegistry());
-        initializer = new BeanInitializerUsingTopologicalSorting(
+        beanFactory = new DefaultBeanFactory(new DefaultSingletonBeanRegistry());
+        initializer = new DefaultBeanInitializer(
                 beanFactory, new ClassPathBeanDefinitionScanner());
     }
 

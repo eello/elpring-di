@@ -4,20 +4,14 @@ import eello.app.contoller.AController;
 import eello.app.repository.ARepository;
 import eello.app.service.AService;
 import eello.app.service.BService;
-import eello.container.Application;
-import eello.container.core.BeanFactory;
-
-import java.lang.reflect.InvocationTargetException;
+import eello.container.boot.ElpringApplication;
+import eello.container.context.ApplicationContext;
 
 public class SimpleDIContainer {
 
-	public static void main(String[] args) throws
-		ClassNotFoundException,
-		InvocationTargetException,
-		InstantiationException,
-		IllegalAccessException {
+	public static void main(String[] args) {
 
-		BeanFactory context = Application.run(SimpleDIContainer.class);
+		ApplicationContext context = ElpringApplication.run(SimpleDIContainer.class);
 
 		AController aController = context.getBean("aController", AController.class);
 		AService aService = context.getBean("aService", AService.class);

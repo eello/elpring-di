@@ -7,13 +7,13 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("DefaultSingletonRegistry")
-class DefaultSingletonRegistryTest {
+class DefaultSingletonBeanRegistryTest {
 
-    private DefaultSingletonRegistry registry;
+    private DefaultSingletonBeanRegistry registry;
 
     @BeforeEach
     void setUp() {
-        registry = new DefaultSingletonRegistry();
+        registry = new DefaultSingletonBeanRegistry();
     }
 
     @Test
