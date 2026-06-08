@@ -1,0 +1,52 @@
+package eello.elpring.di.context;
+
+import eello.elpring.di.beans.BeanDefinition;
+import eello.elpring.di.beans.factory.support.DefaultListableBeanFactory;
+import eello.elpring.di.beans.factory.support.BeanDefinitionRegistry;
+
+public class GenericApplicationContext extends AbstractApplicationContext implements BeanDefinitionRegistry {
+
+    private final DefaultListableBeanFactory beanFactory;
+
+    public GenericApplicationContext() {
+        this(new DefaultListableBeanFactory());
+    }
+
+    public GenericApplicationContext(DefaultListableBeanFactory beanFactory) {
+        this.beanFactory = beanFactory;
+    }
+
+    @Override
+    public DefaultListableBeanFactory getBeanFactory() {
+        return this.beanFactory;
+    }
+
+    @Override
+    public void registerBeanDefinition(String beanName, BeanDefinition beanDefinition) {
+        this.beanFactory.registerBeanDefinition(beanName, beanDefinition);
+    }
+
+    @Override
+    public BeanDefinition getBeanDefinition(String beanName) {
+        return null;
+    }
+
+    @Override
+    public String[] getBeanDefinitionNames() {
+        return this.beanFactory.getBeanDefinitionNames();
+    }
+
+    @Override
+    public boolean containsBeanDefinition(String beanName) {
+        return this.beanFactory.containsBeanDefinition(beanName);
+    }
+
+    @Override
+    public int getBeanDefinitionCount() {
+        return this.beanFactory.getBeanDefinitionCount();
+    }
+
+    public void registerBean() {
+        // TODO 빈 등록 구현
+    }
+}
