@@ -124,4 +124,47 @@ public abstract class AbstractBeanFactoryTest {
             beanFactory.getBean(InterfaceA.class);
         });
     }
+
+    @Test
+    void testGetBeansWithAnnotationNormal() {
+        registry.registerBeanDefinition("annotatedBean", DefaultBeanDefinition.of(AnnotatedBean.class));
+        registry.registerBeanDefinition("simpleBean", DefaultBeanDefinition.of(SimpleBean.class));
+
+        java.util.Map<String, Object> beans = beanFactory.getBeansWithAnnotation(CustomAnnotation.class);
+        assertEquals(1, beans.size());
+        assertTrue(beans.containsKey("annotatedBean"));
+        assertInstanceOf(AnnotatedBean.class, beans.get("annotatedBean"));
+    }
+
+    @Test
+    void testGetBeansWithAnnotationMeta() {
+        registry.registerBeanDefinition("metaAnnotatedBean", DefaultBeanDefinition.of(MetaAnnotatedBean.class));
+
+        java.util.Map<String, Object> beans = beanFactory.getBeansWithAnnotation(CustomAnnotation.class);
+        assertEquals(1, beans.size());
+        assertTrue(beans.containsKey("metaAnnotatedBean"));
+        assertInstanceOf(MetaAnnotatedBean.class, beans.get("metaAnnotatedBean"));
+    }
+
+    @Test
+    void testGetBeansWithAnnotationSystemFiltering() {
+        registry.registerBeanDefinition("unrelatedAnnotatedBean", DefaultBeanDefinition.of(UnrelatedAnnotatedBean.class));
+
+        java.util.Map<String, Object> beans = beanFactory.getBeansWithAnnotation(MetaOfUnrelated.class);
+        // MetaOfUnrelated is a custom meta-annotation, so it should be collected!
+        assertEquals(1, beans.size());
+        assertTrue(beans.containsKey("unrelatedAnnotatedBean"));
+
+        // java.lang.annotation.Target should be filtered out!
+        java.util.Map<String, Object> targetBeans = beanFactory.getBeansWithAnnotation(java.lang.annotation.Target.class);
+        assertEquals(0, targetBeans.size());
+    }
+
+    @Test
+    void testGetBeansWithAnnotationNonExistent() {
+        registry.registerBeanDefinition("simpleBean", DefaultBeanDefinition.of(SimpleBean.class));
+
+        java.util.Map<String, Object> beans = beanFactory.getBeansWithAnnotation(org.junit.jupiter.api.Test.class);
+        assertTrue(beans.isEmpty());
+    }
 }

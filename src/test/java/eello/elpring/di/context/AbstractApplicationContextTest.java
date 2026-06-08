@@ -41,4 +41,23 @@ public abstract class AbstractApplicationContextTest {
         assertSame(lazyBean, lazyBean2);
         assertEquals(1, LazyComponent.constructorCount);
     }
+
+    @Test
+    void testGetBeansWithAnnotationLazyIntegration() {
+        assertEquals(0, EagerComponent.constructorCount);
+        assertEquals(0, LazyComponent.constructorCount);
+
+        ConfigurableApplicationContext context = createApplicationContext("eello.elpring.di.fixtures.scanner");
+
+        assertEquals(1, EagerComponent.constructorCount);
+        assertEquals(0, LazyComponent.constructorCount);
+
+        // Retrieve beans with Component.class annotation
+        java.util.Map<String, Object> components = context.getBeansWithAnnotation(eello.elpring.di.annotation.Component.class);
+
+        // This should force the instantiation of LazyComponent since it is annotated with @Component
+        assertEquals(1, LazyComponent.constructorCount);
+        assertTrue(components.containsKey("lazyComponent"));
+        assertTrue(components.containsKey("eagerComponent"));
+    }
 }

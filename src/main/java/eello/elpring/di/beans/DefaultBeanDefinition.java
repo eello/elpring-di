@@ -1,10 +1,12 @@
 package eello.elpring.di.beans;
 
+import eello.elpring.di.annotation.Component;
 import eello.elpring.di.annotation.Lazy;
 import eello.elpring.di.annotation.Primary;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
-import java.util.Objects;
+import java.util.*;
 
 public class DefaultBeanDefinition implements BeanDefinition {
 
@@ -13,6 +15,7 @@ public class DefaultBeanDefinition implements BeanDefinition {
     private Class<?>[] interfaces;
     private Constructor<?> constructor;
     private Class<?>[] dependsOn;
+    private Class<? extends Annotation>[] metaAnnotations;
     private boolean primary;
     private boolean lazyInit;
     private BeanScope scope;
@@ -31,10 +34,46 @@ public class DefaultBeanDefinition implements BeanDefinition {
         def.interfaces = clazz.getInterfaces();
         def.constructor = clazz.getConstructors()[0];
         def.dependsOn = def.constructor.getParameterTypes();
+
+        def.setMetaAnnotations(clazz);
         def.primary = clazz.isAnnotationPresent(Primary.class);
         def.lazyInit = clazz.isAnnotationPresent(Lazy.class);
+
         def.scope = BeanScope.SINGLETON;
         return def;
+    }
+
+    private void setMetaAnnotations(Class<?> clazz) {
+        Set<Class<? extends Annotation>> visited = new HashSet<>();
+        Set<Class<? extends Annotation>> metaAnnotationTypes = new HashSet<>();
+
+        for (Annotation annotation : clazz.getAnnotations()) {
+            metaAnnotationTypes.addAll(findAllMetaAnnotations(annotation.annotationType(), visited));
+        }
+
+        this.metaAnnotations = metaAnnotationTypes.toArray(new Class[0]);
+    }
+
+    private Set<Class<? extends Annotation>> findAllMetaAnnotations(
+            Class<? extends Annotation> annotation,
+            Set<Class<? extends Annotation>> visited) {
+        if (annotation.getName().startsWith("java.lang.annotation.")
+                || visited.contains(annotation)) {
+            return Collections.emptySet();
+        }
+
+        Set<Class<? extends Annotation>> metaAnnotations = new HashSet<>();
+        metaAnnotations.add(annotation);
+        visited.add(annotation);
+
+        for (Annotation metaAnnotation : annotation.getAnnotations()) {
+            Set<Class<? extends Annotation>> componentMetaAnnotations =
+                    findAllMetaAnnotations(metaAnnotation.annotationType(), visited);
+
+            metaAnnotations.addAll(componentMetaAnnotations);
+        }
+
+        return metaAnnotations;
     }
 
     @Override
@@ -65,6 +104,21 @@ public class DefaultBeanDefinition implements BeanDefinition {
     @Override
     public Class<?>[] getDependsOn() {
         return dependsOn;
+    }
+
+    @Override
+    public Class<? extends Annotation>[] getMetaAnnotations() {
+        return metaAnnotations;
+    }
+
+    @Override
+    public boolean hasAnnotation(Class<? extends Annotation> annotation) {
+        for (Class<? extends Annotation> metaAnnotation : metaAnnotations) {
+            if (metaAnnotation == annotation) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override

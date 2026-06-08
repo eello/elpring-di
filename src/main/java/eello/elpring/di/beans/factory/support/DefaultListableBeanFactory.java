@@ -119,8 +119,18 @@ public class DefaultListableBeanFactory implements ListableBeanFactory, BeanDefi
 
     @Override
     public Map<String, Object> getBeansWithAnnotation(Class<? extends Annotation> annotationType) throws BeansException {
-        // TODO 추후 구현: 구현하기 위해서 BeanDefinition 을 만드는 과정에서 Annotation 들을 모아서 저장해야할 듯
-        return Map.of();
+        Map<String, Object> beansWithAnnotation = new HashMap<>();
+
+        for (Map.Entry<String, BeanDefinition> definitionEntry : beanDefinitionMap.entrySet()) {
+            String beanName = definitionEntry.getKey();
+            BeanDefinition definition = definitionEntry.getValue();
+
+            if (definition.hasAnnotation(annotationType)) {
+                beansWithAnnotation.put(beanName, getBean(beanName));
+            }
+        }
+
+        return beansWithAnnotation;
     }
 
     @Override
