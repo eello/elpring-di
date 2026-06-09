@@ -4,6 +4,8 @@ import eello.elpring.di.beans.BeanDefinition;
 import eello.elpring.di.beans.factory.ListableBeanFactory;
 import eello.elpring.di.beans.factory.support.registry.DefaultSingletonBeanRegistry;
 import eello.elpring.di.beans.factory.support.registry.SingletonBeanRegistry;
+import eello.elpring.di.context.ApplicationContext;
+import eello.elpring.di.context.ApplicationContextAware;
 import eello.elpring.di.exception.*;
 
 import java.lang.annotation.Annotation;
@@ -13,6 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class DefaultListableBeanFactory implements ListableBeanFactory, BeanDefinitionRegistry {
 
+    private ApplicationContext applicationContext;
     private final SingletonBeanRegistry singletonBeanRegistry;
     private final Map<String, BeanDefinition> beanDefinitionMap = new HashMap<>();
     private final Map<Class<?>, List<String>> allBeanNamesByType = new ConcurrentHashMap<>();
@@ -23,6 +26,10 @@ public class DefaultListableBeanFactory implements ListableBeanFactory, BeanDefi
 
     public DefaultListableBeanFactory(SingletonBeanRegistry singletonBeanRegistry) {
         this.singletonBeanRegistry = singletonBeanRegistry;
+    }
+
+    public void setApplicationContext(ApplicationContext applicationContext) {
+        this.applicationContext = applicationContext;
     }
 
     @Override
@@ -106,6 +113,9 @@ public class DefaultListableBeanFactory implements ListableBeanFactory, BeanDefi
 
         try {
             Object bean = definition.getConstructors().newInstance(constructorArgs);
+            if (bean instanceof ApplicationContextAware) {
+                ((ApplicationContextAware) bean).setApplicationContext(applicationContext);
+            }
 
             singletonBeanRegistry.addSingleton(beanName, bean);
             singletonBeanRegistry.completeCurrentlyInCreation(beanName);

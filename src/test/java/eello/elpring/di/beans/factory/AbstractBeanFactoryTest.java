@@ -167,4 +167,13 @@ public abstract class AbstractBeanFactoryTest {
         java.util.Map<String, Object> beans = beanFactory.getBeansWithAnnotation(org.junit.jupiter.api.Test.class);
         assertTrue(beans.isEmpty());
     }
+
+    @Test
+    void testApplicationContextAwareWithNullContext() {
+        registry.registerBeanDefinition("awareBean", DefaultBeanDefinition.of(AwareBean.class));
+
+        AwareBean awareBean = beanFactory.getBean("awareBean", AwareBean.class);
+        assertNotNull(awareBean);
+        assertNull(awareBean.getApplicationContext());
+    }
 }

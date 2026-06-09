@@ -2,6 +2,7 @@ package eello.elpring.di.context;
 
 import eello.elpring.di.fixtures.scanner.EagerComponent;
 import eello.elpring.di.fixtures.scanner.LazyComponent;
+import eello.elpring.di.beans.factory.support.BeanDefinitionRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -59,5 +60,16 @@ public abstract class AbstractApplicationContextTest {
         assertEquals(1, LazyComponent.constructorCount);
         assertTrue(components.containsKey("lazyComponent"));
         assertTrue(components.containsKey("eagerComponent"));
+    }
+
+    @Test
+    void testApplicationContextAwareInjection() {
+        ConfigurableApplicationContext context = createApplicationContext();
+        ((BeanDefinitionRegistry) context).registerBeanDefinition("awareBean", eello.elpring.di.beans.DefaultBeanDefinition.of(eello.elpring.di.fixtures.factory.AwareBean.class));
+
+        eello.elpring.di.fixtures.factory.AwareBean awareBean = context.getBean("awareBean", eello.elpring.di.fixtures.factory.AwareBean.class);
+        assertNotNull(awareBean);
+        assertNotNull(awareBean.getApplicationContext());
+        assertSame(context, awareBean.getApplicationContext());
     }
 }

@@ -14,6 +14,7 @@ public class GenericApplicationContext extends AbstractApplicationContext implem
 
     public GenericApplicationContext(DefaultListableBeanFactory beanFactory) {
         this.beanFactory = beanFactory;
+        this.beanFactory.setApplicationContext(this);
     }
 
     @Override
