@@ -4,6 +4,7 @@ import eello.elpring.di.beans.BeanDefinition;
 import eello.elpring.di.beans.factory.support.registry.SingletonBeanRegistry;
 
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -62,7 +63,7 @@ public class DefaultBeanFactory implements LegacyBeanFactory {
 		InvocationTargetException,
 		InstantiationException,
 		IllegalAccessException {
-		Class<?>[] dependsOn = def.getDependsOn();
+		Parameter[] dependsOn = def.getDependsOn();
 		Object[] args = new Object[dependsOn.length];
 
 		for (int i = 0; i < dependsOn.length; i++) {

@@ -6,6 +6,7 @@ import eello.elpring.di.annotation.Primary;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Parameter;
 import java.util.*;
 
 public class DefaultBeanDefinition implements BeanDefinition {
@@ -14,7 +15,7 @@ public class DefaultBeanDefinition implements BeanDefinition {
     private Class<?> beanType;
     private Class<?>[] interfaces;
     private Constructor<?> constructor;
-    private Class<?>[] dependsOn;
+    private Parameter[] dependsOn;
     private Class<? extends Annotation>[] metaAnnotations;
     private boolean primary;
     private boolean lazyInit;
@@ -33,7 +34,7 @@ public class DefaultBeanDefinition implements BeanDefinition {
         def.beanType = clazz;
         def.interfaces = clazz.getInterfaces();
         def.constructor = clazz.getConstructors()[0];
-        def.dependsOn = def.constructor.getParameterTypes();
+        def.dependsOn = def.constructor.getParameters();
 
         def.setMetaAnnotations(clazz);
         def.primary = clazz.isAnnotationPresent(Primary.class);
@@ -102,7 +103,7 @@ public class DefaultBeanDefinition implements BeanDefinition {
     }
 
     @Override
-    public Class<?>[] getDependsOn() {
+    public Parameter[] getDependsOn() {
         return dependsOn;
     }
 

@@ -9,7 +9,7 @@ import eello.elpring.di.context.ApplicationContextAware;
 import eello.elpring.di.exception.*;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -91,6 +91,11 @@ public class DefaultListableBeanFactory implements ListableBeanFactory, BeanDefi
     }
 
     private Object instantiateBean(String beanName) throws BeansException {
+        /*
+            1단계 제네릭 타입까지 처리 가능 ex) List<InterfaceA>: O, List<List<InterfaceA>> X
+            제네릭이 중첩된 경우 throw IllegalStateException
+            TODO: 제네릭 중첩 해결
+         */
         if (singletonBeanRegistry.isSingletonCurrentlyInCreation(beanName)) {
             throw new BeanCurrentlyInCreationException("bean name '" + beanName + "'" + " is currently in creation");
         }
@@ -102,13 +107,50 @@ public class DefaultListableBeanFactory implements ListableBeanFactory, BeanDefi
             System.out.println("'" + beanName + "' is lazy loading");
         }
 
-        Class<?>[] dependsOn = definition.getDependsOn();
+        Parameter[] dependsOn = definition.getDependsOn();
 
         int argCount = 0;
         Object[] constructorArgs = new Object[dependsOn.length];
 
-        for (Class<?> clazz : dependsOn) {
-            constructorArgs[argCount++] = this.getBean(clazz);
+        for (Parameter param : dependsOn) {
+            Class<?> paramType = param.getType();
+
+            Object arg;
+            if (paramType.equals(Map.class)) {
+                // Key가 String이 아니라면 예외 발생
+                Class<?> keyType = getGenericKeyType(param);
+                assert keyType != null;
+                if (!keyType.equals(String.class)) {
+                    throw new IllegalArgumentException("parameter '" + param.getName() + "' of type '" + keyType + "'" +
+                            " is " +
+                            "not a string");
+                }
+
+                Class<?> valueType = getGenericValueType(param);
+                assert valueType != null;
+                arg = getBeansOfType(valueType);
+            } else if (paramType.isArray() || paramType.equals(List.class) || paramType.equals(Set.class)) {
+                Class<?> componentType;
+                if (paramType.isArray()) {
+                    componentType = paramType.getComponentType();
+                    Collection<?> beans = getBeansOfType(componentType).values();
+                    arg = Array.newInstance(componentType, beans.size());
+
+                    int arrIndex = 0;
+                    for (Object bean : beans) {
+                        Array.set(arg, arrIndex++, componentType.cast(bean));
+                    }
+                } else { // paramType이 List 혹은 Set인 경우
+                    componentType = getGenericComponentType(param);
+                    Collection<?> beans = getBeansOfType(componentType).values();
+
+                    if (paramType.equals(List.class)) {
+                        arg = new ArrayList<>(beans);
+                    } else arg = new HashSet<>(beans);
+                }
+            } else arg = getBean(paramType);
+
+            constructorArgs[argCount++] = arg;
         }
 
         try {
@@ -125,6 +167,54 @@ public class DefaultListableBeanFactory implements ListableBeanFactory, BeanDefi
             e.printStackTrace();
             return null;
         }
+    }
+
+    /**
+     * 파라미터의 제네릭 컴포넌트 타입을 안전하게 추출합니다.
+     * 제네릭이 없거나 추적 실패 시 기본값으로 null을 반환합니다.
+     */
+    private Class<?> getGenericComponentType(Parameter parameter) {
+        Type[] actualTypes = getActualTypeArguments(parameter);
+        if (actualTypes != null && actualTypes.length > 0) {
+            Type actualType = actualTypes[0];
+            if (actualType instanceof Class) {
+                return (Class<?>) actualType;
+            } else throw new IllegalStateException("actual type '" + actualType + "' is not a class");
+        }
+        return Object.class;
+    }
+
+    private Class<?> getGenericKeyType(Parameter parameter) {
+        Type[] actualTypes = getActualTypeArguments(parameter);
+        if (actualTypes != null && actualTypes.length >= 2) {
+            Type actualKeyType = actualTypes[0];
+            if (actualTypes[0] instanceof Class) {
+                return (Class<?>) actualKeyType;
+            } else throw new IllegalStateException("actual type '" + actualKeyType + "' is not a class");
+        }
+        return null;
+    }
+
+    private Class<?> getGenericValueType(Parameter parameter) {
+        Type[] actualTypes = getActualTypeArguments(parameter);
+        if (actualTypes != null && actualTypes.length >= 2) {
+            Type actualValueType = actualTypes[1];
+            if (actualTypes[1] instanceof Class) {
+                return (Class<?>) actualValueType;
+            } else throw new IllegalStateException("actual type '" + actualValueType + "' is not a class");
+        }
+        return null;
+    }
+
+    private Type[] getActualTypeArguments(Parameter parameter) {
+        Type genericType = parameter.getParameterizedType();
+
+        if (genericType instanceof ParameterizedType) {
+            ParameterizedType parameterizedType = (ParameterizedType) genericType;
+            return parameterizedType.getActualTypeArguments();
+        }
+
+        return null;
     }
 
     @Override
@@ -201,5 +291,29 @@ public class DefaultListableBeanFactory implements ListableBeanFactory, BeanDefi
     @Override
     public int getBeanDefinitionCount() {
         return this.beanDefinitionMap.size();
+    }
+
+    @Override
+    public String[] getBeanNamesForType(Class<?> type) {
+        List<String> beanNames = allBeanNamesByType.get(type);
+        if (beanNames == null) {
+            return new String[0];
+        }
+
+        return beanNames.toArray(new String[0]);
+    }
+
+    @Override
+    public <T> Map<String, T> getBeansOfType(Class<T> type) throws BeansException {
+        Map<String, T> beansOfType = new HashMap<>();
+
+        String[] beanNames = getBeanNamesForType(type);
+        for (String beanName : beanNames) {
+            if (!singletonBeanRegistry.isSingletonCurrentlyInCreation(beanName)) {
+                beansOfType.put(beanName, this.getBean(beanName, type));
+            }
+        }
+
+        return beansOfType;
     }
 }

@@ -3,6 +3,9 @@ package eello.elpring.di.context;
 import eello.elpring.di.beans.BeanDefinition;
 import eello.elpring.di.beans.factory.support.DefaultListableBeanFactory;
 import eello.elpring.di.beans.factory.support.BeanDefinitionRegistry;
+import eello.elpring.di.exception.BeansException;
+
+import java.util.Map;
 
 public class GenericApplicationContext extends AbstractApplicationContext implements BeanDefinitionRegistry {
 
@@ -45,6 +48,16 @@ public class GenericApplicationContext extends AbstractApplicationContext implem
     @Override
     public int getBeanDefinitionCount() {
         return this.beanFactory.getBeanDefinitionCount();
+    }
+
+    @Override
+    public String[] getBeanNamesForType(Class<?> type) {
+        return this.beanFactory.getBeanNamesForType(type);
+    }
+
+    @Override
+    public <T> Map<String, T> getBeansOfType(Class<T> type) throws BeansException {
+        return this.beanFactory.getBeansOfType(type);
     }
 
     public void registerBean() {

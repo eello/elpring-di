@@ -11,4 +11,6 @@ public interface ListableBeanFactory extends BeanFactory {
     int getBeanDefinitionCount();
     String[] getBeanDefinitionNames();
     Map<String, Object> getBeansWithAnnotation(Class<? extends Annotation> annotationType) throws BeansException;
+    String[] getBeanNamesForType(Class<?> type);
+    <T> Map<String, T> getBeansOfType(Class<T> type) throws BeansException;
 }

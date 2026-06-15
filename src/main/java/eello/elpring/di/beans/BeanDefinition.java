@@ -2,6 +2,7 @@ package eello.elpring.di.beans;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Parameter;
 
 public interface BeanDefinition {
 
@@ -10,7 +11,7 @@ public interface BeanDefinition {
 	String getBeanTypeName();
 	Class<?>[] getInterfaceTypes();
 	Constructor<?> getConstructors();
-	Class<?>[] getDependsOn();
+	Parameter[] getDependsOn();
 	Class<? extends Annotation>[] getMetaAnnotations();
 	boolean hasAnnotation(Class<? extends Annotation> annotation);
 	boolean isPrimary();

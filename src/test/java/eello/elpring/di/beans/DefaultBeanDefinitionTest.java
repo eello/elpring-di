@@ -35,7 +35,7 @@ public class DefaultBeanDefinitionTest {
         BeanDefinition def = DefaultBeanDefinition.of(DependencyBean.class);
 
         assertEquals(1, def.getDependsOn().length);
-        assertEquals(SimpleBean.class, def.getDependsOn()[0]);
+        assertEquals(SimpleBean.class, def.getDependsOn()[0].getType());
     }
 
     @Test

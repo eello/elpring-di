@@ -5,6 +5,7 @@ import eello.elpring.di.beans.factory.LegacyBeanFactory;
 import eello.elpring.di.exception.NoUniqueBeanDefinitionException;
 
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Parameter;
 import java.util.*;
 
 /**
@@ -83,8 +84,8 @@ public class DefaultBeanInitializer implements BeanInitializer {
 			}
 
 			putWithInitializeIfNotContainsKey(dependsOnMe, bd.getBeanType(), null);
-			for (Class<?> dependency : bd.getDependsOn()) {
-				putWithInitializeIfNotContainsKey(dependsOnMe, dependency, bd.getBeanType());
+			for (Parameter dependency : bd.getDependsOn()) {
+				putWithInitializeIfNotContainsKey(dependsOnMe, dependency.getType(), bd.getBeanType());
 			}
 
 			indegree.put(bd.getBeanType(), bd.getDependsOn().length);
