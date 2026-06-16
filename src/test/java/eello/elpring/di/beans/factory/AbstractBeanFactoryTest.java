@@ -363,4 +363,18 @@ public abstract class AbstractBeanFactoryTest {
             beanFactory.getBean("wildcardConstructorBean");
         });
     }
+
+    @Test
+    void testConstructorInjectionWithMultipleSameTypeByName() {
+        registry.registerBeanDefinition("implA1", DefaultBeanDefinition.of(ImplA1.class));
+        registry.registerBeanDefinition("implA2", DefaultBeanDefinition.of(ImplA2.class));
+        registry.registerBeanDefinition("multipleSameTypeConstructorBean", DefaultBeanDefinition.of(MultipleSameTypeConstructorBean.class));
+
+        MultipleSameTypeConstructorBean bean = beanFactory.getBean("multipleSameTypeConstructorBean", MultipleSameTypeConstructorBean.class);
+        assertNotNull(bean);
+        assertNotNull(bean.getImplA1());
+        assertNotNull(bean.getImplA2());
+        assertInstanceOf(ImplA1.class, bean.getImplA1());
+        assertInstanceOf(ImplA2.class, bean.getImplA2());
+    }
 }

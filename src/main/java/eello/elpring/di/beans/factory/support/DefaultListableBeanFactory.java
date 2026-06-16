@@ -113,6 +113,7 @@ public class DefaultListableBeanFactory implements ListableBeanFactory, BeanDefi
         Object[] constructorArgs = new Object[dependsOn.length];
 
         for (Parameter param : dependsOn) {
+            String paramName = param.getName(); // == beanName
             Class<?> paramType = param.getType();
 
             Object arg;
@@ -148,7 +149,17 @@ public class DefaultListableBeanFactory implements ListableBeanFactory, BeanDefi
                         arg = new ArrayList<>(beans);
                     } else arg = new HashSet<>(beans);
                 }
-            } else arg = getBean(paramType);
+            } else {
+                try {
+                    arg = getBean(paramType);
+                } catch (NoUniqueBeanDefinitionException e) {
+                    try {
+                        arg = getBean(paramName);
+                    } catch (NoSuchBeanDefinitionException e2) {
+                        throw e2;
+                    }
+                }
+            }
 
             constructorArgs[argCount++] = arg;
         }
