@@ -1,16 +1,17 @@
 package eello.elpring.di.beans.factory.support;
 
+import eello.elpring.di.annotation.Bean;
+import eello.elpring.di.annotation.Component;
 import eello.elpring.di.beans.BeanDefinition;
 import eello.elpring.di.beans.BeanDefinitionHolder;
-import eello.elpring.di.annotation.Component;
 import eello.elpring.di.beans.DefaultBeanDefinition;
 
 import java.io.File;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 /**
  * basePackages 경로 안에 있는 모든 클래스 중 빈 등록 대상의 클래스들을
@@ -18,60 +19,78 @@ import java.util.Set;
  */
 public class ClassPathBeanDefinitionScanner {
 
-	private final ClassLoader cl;
-	private final BeanDefinitionRegistry registry;
+    private final ClassLoader cl;
+    private final BeanDefinitionRegistry registry;
 
-	public ClassPathBeanDefinitionScanner(BeanDefinitionRegistry registry) {
-		this.cl = Thread.currentThread().getContextClassLoader();
-		this.registry = registry;
-	}
+    public ClassPathBeanDefinitionScanner(BeanDefinitionRegistry registry) {
+        this.cl = Thread.currentThread().getContextClassLoader();
+        this.registry = registry;
+    }
 
-	/*
-		새로 스캔한 BeanDefinition 수 리턴
-	 */
-	public int scan(String... basePackage) throws ClassNotFoundException {
-		int beanCountAtScanStart = registry.getBeanDefinitionCount();
-		this.doScan(basePackage);
-		return registry.getBeanDefinitionCount() - beanCountAtScanStart;
-	}
+    /*
+        새로 스캔한 BeanDefinition 수 리턴
+     */
+    public int scan(String... basePackage) throws ClassNotFoundException {
+        int beanCountAtScanStart = registry.getBeanDefinitionCount();
+        this.doScan(basePackage);
+        return registry.getBeanDefinitionCount() - beanCountAtScanStart;
+    }
 
-	/*
-		모든 basePackage 들을 읽어 후보 빈 정의(BeanDefinition)을 만들어
-		BeanDefinitionRegistry(DefaultListableBeanFactory) 에 등록
-	 */
-	protected Set<BeanDefinition> doScan(String... basePackages) throws ClassNotFoundException {
-		Set<BeanDefinition> beanDefinitions = new HashSet<>();
-		for (String basePackage : basePackages) {
-			Set<BeanDefinition> candidateComponents = findCandidateComponents(basePackage);
-			beanDefinitions.addAll(candidateComponents);
-		}
+    /*
+        모든 basePackage 들을 읽어 후보 빈 정의(BeanDefinition)을 만들어
+        BeanDefinitionRegistry(DefaultListableBeanFactory) 에 등록
+     */
+    protected Set<BeanDefinition> doScan(String... basePackages) throws ClassNotFoundException {
+        Set<BeanDefinition> beanDefinitions = new HashSet<>();
+        for (String basePackage : basePackages) {
+            Set<BeanDefinition> candidateComponents = findCandidateComponents(basePackage);
+            beanDefinitions.addAll(candidateComponents);
+        }
 
-		for (BeanDefinition candidateDefinition : beanDefinitions) {
-			String beanName = generateBeanName(candidateDefinition);
-			BeanDefinitionHolder candidateDefinitionHolder = new BeanDefinitionHolder(beanName, candidateDefinition);
-			BeanDefinitionReaderUtils.registerBeanDefinition(candidateDefinitionHolder, registry);
-		}
+        List<BeanDefinition> beanDefinitionList = new ArrayList<>(beanDefinitions);
+        for (int i = 0; i < beanDefinitionList.size(); i++) {
+            BeanDefinition beanDefinition = beanDefinitionList.get(i);
+            String beanName = BeanNameGenerator.generate(beanDefinition);
+            BeanDefinitionHolder beanDefinitionHolder = new BeanDefinitionHolder(beanName, beanDefinition);
+            BeanDefinitionReaderUtils.registerBeanDefinition(beanDefinitionHolder, registry);
 
-		return beanDefinitions;
-	}
+            if (beanDefinition.isConfigurationClass()) {
+                beanDefinitionList.addAll(parseAndRegisterBeanMethods(beanDefinitionHolder));
+            }
+        }
 
-	private String generateBeanName(BeanDefinition beanDefinition) {
-		Class<?> beanClass = beanDefinition.getBeanType();
-		Component component = beanClass.getAnnotation(Component.class);
+        return new HashSet<>(beanDefinitionList);
+    }
 
-		String beanName = component.value();
-		if (!beanName.isBlank()) {
-			return beanName;
-		}
+    /**
+     * BeanDefinitionHolder의 BeanDefinition이 FactoryBean(@Configuration이 적용된 클래스)인 경우
+     * 클래스 내부에서 @Bean이 적용된 FactoryBeanMethod를 찾아 BeanDefinitionHolder를 만들고 BeanRegistry에 등록
+     */
+    private List<BeanDefinition> parseAndRegisterBeanMethods(BeanDefinitionHolder beanDefinitionHolder) {
+        BeanDefinition beanDefinition = beanDefinitionHolder.getBeanDefinition();
+        if (!beanDefinition.isConfigurationClass()) {
+            return Collections.EMPTY_LIST;
+        }
 
-		char[] defaultBeanName = beanDefinition.getBeanClassName().toCharArray();
-		defaultBeanName[0] = Character.toLowerCase(defaultBeanName[0]);
-		return new String(defaultBeanName);
-	}
+        Class<?> factoryBean = beanDefinition.getBeanType();
+        String factoryBeanName = beanDefinitionHolder.getBeanName();
 
-	private Set<BeanDefinition> findCandidateComponents(String basePackage) throws ClassNotFoundException {
-		Set<Class<?>> classes = findAllClasses(basePackage);
-		Set<BeanDefinition> beanDefinitions = new HashSet<>();
+        List<BeanDefinition> factoryBeanMethodDefinitionHolders = new ArrayList<>();
+        for (Method method : factoryBean.getMethods()) {
+            if (!method.isAnnotationPresent(Bean.class)) {
+                continue;
+            }
+
+            BeanDefinition factoryBeanMethodDefinition = DefaultBeanDefinition.of(method, factoryBeanName);
+            factoryBeanMethodDefinitionHolders.add(factoryBeanMethodDefinition);
+        }
+
+        return factoryBeanMethodDefinitionHolders;
+    }
+
+    private Set<BeanDefinition> findCandidateComponents(String basePackage) throws ClassNotFoundException {
+        Set<Class<?>> classes = findAllClasses(basePackage);
+        Set<BeanDefinition> beanDefinitions = new HashSet<>();
 
 		for (Class<?> clazz : classes) {
 			if (!clazz.isAnnotation() && isComponent(clazz)) {
@@ -79,49 +98,49 @@ public class ClassPathBeanDefinitionScanner {
 			}
 		}
 
-		return beanDefinitions;
-	}
+        return beanDefinitions;
+    }
 
-	private Set<Class<?>> findAllClasses(String basePackage) throws ClassNotFoundException {
-		Set<Class<?>> classes = new HashSet<>();
+    private Set<Class<?>> findAllClasses(String basePackage) throws ClassNotFoundException {
+        Set<Class<?>> classes = new HashSet<>();
 
-		try {
-			String path = basePackage.replace(".", "/");
-			URL resource = cl.getResource(path);
-			File directory = new File(resource.toURI());
+        try {
+            String path = basePackage.replace(".", "/");
+            URL resource = cl.getResource(path);
+            File directory = new File(resource.toURI());
 
-			for (File file : directory.listFiles()) {
-				if (file.isDirectory()) {
-					String childPackageName = basePackage + "." + file.getName();
-					classes.addAll(findAllClasses(childPackageName));
-				} else if (file.getName().endsWith(".class")) {
-					String className = basePackage + '.' + file.getName().substring(0, file.getName().length() - 6);
-					classes.add(Class.forName(className));
-				}
-			}
-		} catch (URISyntaxException e) {
-			e.printStackTrace();
-		}
+            for (File file : directory.listFiles()) {
+                if (file.isDirectory()) {
+                    String childPackageName = basePackage + "." + file.getName();
+                    classes.addAll(findAllClasses(childPackageName));
+                } else if (file.getName().endsWith(".class")) {
+                    String className = basePackage + '.' + file.getName().substring(0, file.getName().length() - 6);
+                    classes.add(Class.forName(className));
+                }
+            }
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        }
 
-		return classes;
-	}
+        return classes;
+    }
 
-	// clazz 에 적용된 어노테이션들을 재귀적으로 검사해 @Component 가 적용된 경우 true 리턴
-	private boolean isComponent(Class<?> clazz) {
-		if (clazz.isAnnotationPresent(Component.class)) return true;
+    // clazz 에 적용된 어노테이션들을 재귀적으로 검사해 @Component 가 적용된 경우 true 리턴
+    private boolean isComponent(Class<?> clazz) {
+        if (clazz.isAnnotationPresent(Component.class)) return true;
 
-		for (Annotation annotation : clazz.getAnnotations()) {
-			if (isSystemAnnotation(annotation)) continue;
-			if (isComponent(annotation.annotationType())) {
-				return true;
-			}
-		}
-		return false;
-	}
+        for (Annotation annotation : clazz.getAnnotations()) {
+            if (isSystemAnnotation(annotation)) continue;
+            if (isComponent(annotation.annotationType())) {
+                return true;
+            }
+        }
+        return false;
+    }
 
-	private boolean isSystemAnnotation(Annotation annotation) {
-		String packageName = annotation.annotationType().getPackageName();
-		return packageName.startsWith("java.lang.annotation") ||
-				packageName.startsWith("jakarta.annotation");
-	}
+    private boolean isSystemAnnotation(Annotation annotation) {
+        String packageName = annotation.annotationType().getPackageName();
+        return packageName.startsWith("java.lang.annotation") ||
+                packageName.startsWith("jakarta.annotation");
+    }
 }

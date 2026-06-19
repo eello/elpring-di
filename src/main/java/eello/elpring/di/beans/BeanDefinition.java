@@ -2,6 +2,7 @@ package eello.elpring.di.beans;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 
 public interface BeanDefinition {
@@ -19,4 +20,8 @@ public interface BeanDefinition {
 	BeanScope getScope();
 	boolean equals(Object o);
 	int hashCode();
+	String getFactoryBeanName();
+	Method getFactoryMethod();
+	boolean isConfigurationClass();
+	boolean isFactoryBeanMethod();
 }

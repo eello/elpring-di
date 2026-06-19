@@ -1,11 +1,12 @@
 package eello.elpring.di.beans;
 
-import eello.elpring.di.annotation.Component;
+import eello.elpring.di.annotation.Configuration;
 import eello.elpring.di.annotation.Lazy;
 import eello.elpring.di.annotation.Primary;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.*;
 
@@ -20,15 +21,13 @@ public class DefaultBeanDefinition implements BeanDefinition {
     private boolean primary;
     private boolean lazyInit;
     private BeanScope scope;
+    private String factoryBeanName;
+    private Method factoryMethod;
 
     private DefaultBeanDefinition() {
     }
 
     public static BeanDefinition of(Class<?> clazz) {
-        return of(clazz, null);
-    }
-
-    public static BeanDefinition of(Class<?> clazz, String beanName) {
         DefaultBeanDefinition def = new DefaultBeanDefinition();
         def.beanClassName = clazz.getSimpleName();
         def.beanType = clazz;
@@ -44,15 +43,42 @@ public class DefaultBeanDefinition implements BeanDefinition {
         return def;
     }
 
+    public static BeanDefinition of(Method factoryMethod, String factoryBeanName) {
+        Class<?> returnType = factoryMethod.getReturnType();
+
+        DefaultBeanDefinition def = new DefaultBeanDefinition();
+        def.beanClassName = returnType.getSimpleName();
+        def.beanType = returnType;
+        def.interfaces = returnType.getInterfaces();
+//        def.constructor = returnType.getConstructors()[0];
+        def.dependsOn = factoryMethod.getParameters();
+
+        def.setMetaAnnotations(factoryMethod);
+        def.primary = factoryMethod.isAnnotationPresent(Primary.class);
+        def.lazyInit = factoryMethod.isAnnotationPresent(Lazy.class);
+
+        def.scope = BeanScope.SINGLETON;
+
+        def.factoryBeanName = factoryBeanName;
+        def.factoryMethod = factoryMethod;
+        return def;
+    }
+
     private void setMetaAnnotations(Class<?> clazz) {
+        this.metaAnnotations = extractMetaAnnotations(clazz.getAnnotations());
+    }
+
+    private void setMetaAnnotations(Method method) {
+        this.metaAnnotations = extractMetaAnnotations(method.getAnnotations());
+    }
+
+    private Class<? extends Annotation>[] extractMetaAnnotations(Annotation[] annotations) {
         Set<Class<? extends Annotation>> visited = new HashSet<>();
-        Set<Class<? extends Annotation>> metaAnnotationTypes = new HashSet<>();
-
-        for (Annotation annotation : clazz.getAnnotations()) {
-            metaAnnotationTypes.addAll(findAllMetaAnnotations(annotation.annotationType(), visited));
-        }
-
-        this.metaAnnotations = metaAnnotationTypes.toArray(new Class[0]);
+        return Arrays.stream(annotations)
+                .map(Annotation::annotationType)
+                .flatMap(annotationType -> findAllMetaAnnotations(annotationType, visited).stream())
+                .distinct()
+                .toArray(size -> (Class<? extends Annotation>[]) new Class[size]);
     }
 
     private Set<Class<? extends Annotation>> findAllMetaAnnotations(
@@ -141,11 +167,32 @@ public class DefaultBeanDefinition implements BeanDefinition {
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         DefaultBeanDefinition that = (DefaultBeanDefinition) o;
-        return primary == that.primary && lazyInit == that.lazyInit && Objects.equals(beanClassName, that.beanClassName) && Objects.equals(beanType, that.beanType) && scope == that.scope;
+        return primary == that.primary && lazyInit == that.lazyInit && Objects.equals(beanClassName,
+                that.beanClassName) && Objects.equals(beanType, that.beanType) && scope == that.scope;
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(beanClassName, beanType, primary, lazyInit, scope);
+    }
+
+    @Override
+    public String getFactoryBeanName() {
+        return factoryBeanName;
+    }
+
+    @Override
+    public Method getFactoryMethod() {
+        return factoryMethod;
+    }
+
+    @Override
+    public boolean isConfigurationClass() {
+        return beanType != null && beanType.isAnnotationPresent(Configuration.class);
+    }
+
+    @Override
+    public boolean isFactoryBeanMethod() {
+        return factoryMethod != null;
     }
 }

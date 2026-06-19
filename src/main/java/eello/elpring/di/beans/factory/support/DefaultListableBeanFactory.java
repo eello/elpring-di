@@ -112,8 +112,7 @@ public class DefaultListableBeanFactory implements ListableBeanFactory, BeanDefi
         Parameter[] dependsOn = definition.getDependsOn();
 
         int argCount = 0;
-        Object[] constructorArgs = new Object[dependsOn.length];
-
+        Object[] args = new Object[dependsOn.length];
         for (Parameter param : dependsOn) {
             String paramName = param.getName(); // == beanName
             Class<?> paramType = param.getType();
@@ -163,23 +162,30 @@ public class DefaultListableBeanFactory implements ListableBeanFactory, BeanDefi
                 }
             }
 
-            constructorArgs[argCount++] = arg;
+            args[argCount++] = arg;
         }
 
+        Object bean = null;
         try {
-            Object bean = definition.getConstructors().newInstance(constructorArgs);
-            if (bean instanceof ApplicationContextAware) {
-                ((ApplicationContextAware) bean).setApplicationContext(applicationContext);
+            if (definition.isFactoryBeanMethod()) {
+                Object factoryBean = getBean(definition.getFactoryBeanName());
+                Method factoryMethod = definition.getFactoryMethod();
+                bean = factoryMethod.invoke(factoryBean, args);
+            } else {
+                bean = definition.getConstructors().newInstance(args);
             }
 
             singletonBeanRegistry.addSingleton(beanName, bean);
-            singletonBeanRegistry.completeCurrentlyInCreation(beanName);
-
-            return bean;
+            if (bean instanceof ApplicationContextAware) {
+                ((ApplicationContextAware) bean).setApplicationContext(applicationContext);
+            }
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
             e.printStackTrace();
-            return null;
+        } finally {
+            singletonBeanRegistry.completeCurrentlyInCreation(beanName);
         }
+
+        return bean;
     }
 
     @Override
