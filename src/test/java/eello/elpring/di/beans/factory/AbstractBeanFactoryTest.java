@@ -308,17 +308,17 @@ public abstract class AbstractBeanFactoryTest {
         registry.registerBeanDefinition("setConstructorBean", DefaultBeanDefinition.of(SetConstructorBean.class));
         registry.registerBeanDefinition("arrayConstructorBean", DefaultBeanDefinition.of(ArrayConstructorBean.class));
 
-        ListConstructorBean listBean = beanFactory.getBean("listConstructorBean", ListConstructorBean.class);
-        assertNotNull(listBean);
-        assertTrue(listBean.getList().isEmpty());
+        assertThrows(NoSuchBeanDefinitionException.class, () -> {
+            beanFactory.getBean("listConstructorBean");
+        });
 
-        SetConstructorBean setBean = beanFactory.getBean("setConstructorBean", SetConstructorBean.class);
-        assertNotNull(setBean);
-        assertTrue(setBean.getSet().isEmpty());
+        assertThrows(NoSuchBeanDefinitionException.class, () -> {
+            beanFactory.getBean("setConstructorBean");
+        });
 
-        ArrayConstructorBean arrayBean = beanFactory.getBean("arrayConstructorBean", ArrayConstructorBean.class);
-        assertNotNull(arrayBean);
-        assertEquals(0, arrayBean.getArray().length);
+        assertThrows(NoSuchBeanDefinitionException.class, () -> {
+            beanFactory.getBean("arrayConstructorBean");
+        });
     }
 
     @Test
@@ -334,7 +334,7 @@ public abstract class AbstractBeanFactoryTest {
     void testConstructorInjectionWithNestedGenericThrowsException() {
         registry.registerBeanDefinition("nestedGenericConstructorBean", DefaultBeanDefinition.of(NestedGenericConstructorBean.class));
 
-        assertThrows(IllegalStateException.class, () -> {
+        assertThrows(NoSuchBeanDefinitionException.class, () -> {
             beanFactory.getBean("nestedGenericConstructorBean");
         });
     }
@@ -359,7 +359,7 @@ public abstract class AbstractBeanFactoryTest {
     void testConstructorInjectionWithWildcardThrowsException() {
         registry.registerBeanDefinition("wildcardConstructorBean", DefaultBeanDefinition.of(WildcardConstructorBean.class));
 
-        assertThrows(IllegalStateException.class, () -> {
+        assertThrows(NoSuchBeanDefinitionException.class, () -> {
             beanFactory.getBean("wildcardConstructorBean");
         });
     }

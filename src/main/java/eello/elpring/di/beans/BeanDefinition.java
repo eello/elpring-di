@@ -1,5 +1,7 @@
 package eello.elpring.di.beans;
 
+import eello.elpring.di.inbox.ResolvableType;
+
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -24,4 +26,5 @@ public interface BeanDefinition {
 	Method getFactoryMethod();
 	boolean isConfigurationClass();
 	boolean isFactoryBeanMethod();
+	ResolvableType getTargetType();
 }

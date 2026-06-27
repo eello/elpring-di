@@ -56,6 +56,11 @@ public class GenericApplicationContext extends AbstractApplicationContext implem
     }
 
     @Override
+    public String[] getBeanNamesForType(eello.elpring.di.inbox.ResolvableType type) {
+        return this.beanFactory.getBeanNamesForType(type);
+    }
+
+    @Override
     public <T> Map<String, T> getBeansOfType(Class<T> type) throws BeansException {
         return this.beanFactory.getBeansOfType(type);
     }

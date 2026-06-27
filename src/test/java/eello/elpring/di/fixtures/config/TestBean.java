@@ -10,6 +10,7 @@ public class TestBean implements Serializable {
     private final List<DependencyBean> dependencyBeans;
     private final DependencyBean[] dependencyBeanArray;
     private final Set<DependencyBean> dependencyBeanSet;
+    private final List<Converter<?>> converters;
 
     public TestBean() {
         this.dependencyBean = null;
@@ -17,6 +18,7 @@ public class TestBean implements Serializable {
         this.dependencyBeans = null;
         this.dependencyBeanArray = null;
         this.dependencyBeanSet = null;
+        this.converters = null;
     }
 
     public TestBean(DependencyBean dependencyBean) {
@@ -25,6 +27,7 @@ public class TestBean implements Serializable {
         this.dependencyBeans = null;
         this.dependencyBeanArray = null;
         this.dependencyBeanSet = null;
+        this.converters = null;
     }
 
     public TestBean(DependencyBean dependencyBean, AnotherDependencyBean anotherDependencyBean) {
@@ -33,6 +36,7 @@ public class TestBean implements Serializable {
         this.dependencyBeans = null;
         this.dependencyBeanArray = null;
         this.dependencyBeanSet = null;
+        this.converters = null;
     }
 
     public TestBean(List<DependencyBean> dependencyBeans, DependencyBean[] dependencyBeanArray, Set<DependencyBean> dependencyBeanSet) {
@@ -41,6 +45,16 @@ public class TestBean implements Serializable {
         this.dependencyBeans = dependencyBeans;
         this.dependencyBeanArray = dependencyBeanArray;
         this.dependencyBeanSet = dependencyBeanSet;
+        this.converters = null;
+    }
+
+    public TestBean(List<Converter<?>> converters) {
+        this.dependencyBean = null;
+        this.anotherDependencyBean = null;
+        this.dependencyBeans = null;
+        this.dependencyBeanArray = null;
+        this.dependencyBeanSet = null;
+        this.converters = converters;
     }
 
     public DependencyBean getDependencyBean() {
@@ -61,5 +75,9 @@ public class TestBean implements Serializable {
 
     public Set<DependencyBean> getDependencyBeanSet() {
         return dependencyBeanSet;
+    }
+
+    public List<Converter<?>> getConverters() {
+        return converters;
     }
 }

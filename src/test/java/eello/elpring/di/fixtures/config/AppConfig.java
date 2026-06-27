@@ -32,4 +32,14 @@ public class AppConfig {
     public TestBean collectionDependentBean(List<DependencyBean> dependencyBeans, DependencyBean[] dependencyBeanArray, Set<DependencyBean> dependencyBeanSet) {
         return new TestBean(dependencyBeans, dependencyBeanArray, dependencyBeanSet);
     }
+
+    @Bean
+    public ChildAwareBean childAwareBean() {
+        return new ChildAwareBean();
+    }
+
+    @Bean
+    public TestBean converterTargetBean(List<Converter<?>> converters) {
+        return new TestBean(converters);
+    }
 }

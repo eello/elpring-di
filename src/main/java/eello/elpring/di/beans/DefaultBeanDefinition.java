@@ -3,6 +3,7 @@ package eello.elpring.di.beans;
 import eello.elpring.di.annotation.Configuration;
 import eello.elpring.di.annotation.Lazy;
 import eello.elpring.di.annotation.Primary;
+import eello.elpring.di.inbox.ResolvableType;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
@@ -23,6 +24,7 @@ public class DefaultBeanDefinition implements BeanDefinition {
     private BeanScope scope;
     private String factoryBeanName;
     private Method factoryMethod;
+    private ResolvableType targetType;
 
     private DefaultBeanDefinition() {
     }
@@ -40,6 +42,9 @@ public class DefaultBeanDefinition implements BeanDefinition {
         def.lazyInit = clazz.isAnnotationPresent(Lazy.class);
 
         def.scope = BeanScope.SINGLETON;
+
+        def.targetType = ResolvableType.forClass(clazz);
+
         return def;
     }
 
@@ -61,6 +66,9 @@ public class DefaultBeanDefinition implements BeanDefinition {
 
         def.factoryBeanName = factoryBeanName;
         def.factoryMethod = factoryMethod;
+
+        def.targetType = ResolvableType.forType(factoryMethod.getGenericReturnType());
+
         return def;
     }
 
@@ -194,5 +202,10 @@ public class DefaultBeanDefinition implements BeanDefinition {
     @Override
     public boolean isFactoryBeanMethod() {
         return factoryMethod != null;
+    }
+
+    @Override
+    public ResolvableType getTargetType() {
+        return targetType;
     }
 }

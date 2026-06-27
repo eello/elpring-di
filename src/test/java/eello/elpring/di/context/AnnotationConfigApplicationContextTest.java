@@ -70,5 +70,17 @@ public class AnnotationConfigApplicationContextTest extends AbstractApplicationC
         org.junit.jupiter.api.Assertions.assertTrue(serializableBeans.containsKey("dependentBean"));
         org.junit.jupiter.api.Assertions.assertTrue(serializableBeans.containsKey("multiDependentBean"));
         org.junit.jupiter.api.Assertions.assertTrue(serializableBeans.containsKey("collectionDependentBean"));
+
+        // 9. 2단계 상속 계층 구조의 ApplicationContextAware 주입 검증 테스트
+        eello.elpring.di.fixtures.config.ChildAwareBean childAwareBean = (eello.elpring.di.fixtures.config.ChildAwareBean) context.getBean("childAwareBean");
+        org.junit.jupiter.api.Assertions.assertNotNull(childAwareBean);
+        org.junit.jupiter.api.Assertions.assertNotNull(childAwareBean.getApplicationContext());
+        org.junit.jupiter.api.Assertions.assertSame(context, childAwareBean.getApplicationContext());
+
+        // 10. List<Converter<?>> 와일드카드 제네릭 인터페이스 리스트 주입 검증 테스트
+        eello.elpring.di.fixtures.config.TestBean converterTargetBean = (eello.elpring.di.fixtures.config.TestBean) context.getBean("converterTargetBean");
+        org.junit.jupiter.api.Assertions.assertNotNull(converterTargetBean);
+        org.junit.jupiter.api.Assertions.assertNotNull(converterTargetBean.getConverters());
+        org.junit.jupiter.api.Assertions.assertEquals(2, converterTargetBean.getConverters().size());
     }
 }

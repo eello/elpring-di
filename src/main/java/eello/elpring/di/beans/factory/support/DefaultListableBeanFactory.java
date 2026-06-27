@@ -7,13 +7,12 @@ import eello.elpring.di.beans.factory.support.registry.SingletonBeanRegistry;
 import eello.elpring.di.context.ApplicationContext;
 import eello.elpring.di.context.ApplicationContextAware;
 import eello.elpring.di.exception.*;
+import eello.elpring.di.inbox.ResolvableType;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static eello.elpring.di.util.GenericTypeResolver.*;
 
 public class DefaultListableBeanFactory implements ListableBeanFactory, BeanDefinitionRegistry {
 
@@ -93,11 +92,6 @@ public class DefaultListableBeanFactory implements ListableBeanFactory, BeanDefi
     }
 
     private Object instantiateBean(String beanName) throws BeansException {
-        /*
-            1단계 제네릭 타입까지 처리 가능 ex) List<InterfaceA>: O, List<List<InterfaceA>> X
-            제네릭이 중첩된 경우 throw IllegalStateException
-            TODO: 제네릭 중첩 해결
-         */
         if (singletonBeanRegistry.isSingletonCurrentlyInCreation(beanName)) {
             throw new BeanCurrentlyInCreationException("bean name '" + beanName + "'" + " is currently in creation");
         }
@@ -111,58 +105,9 @@ public class DefaultListableBeanFactory implements ListableBeanFactory, BeanDefi
 
         Parameter[] dependsOn = definition.getDependsOn();
 
-        int argCount = 0;
         Object[] args = new Object[dependsOn.length];
-        for (Parameter param : dependsOn) {
-            String paramName = param.getName(); // == beanName
-            Class<?> paramType = param.getType();
-
-            Object arg;
-            if (paramType.equals(Map.class)) {
-                // Key가 String이 아니라면 예외 발생
-                Class<?> keyType = getGenericKeyType(param);
-                assert keyType != null;
-                if (!keyType.equals(String.class)) {
-                    throw new IllegalArgumentException("parameter '" + param.getName() + "' of type '" + keyType + "'" +
-                            " is " +
-                            "not a string");
-                }
-
-                Class<?> valueType = getGenericValueType(param);
-                assert valueType != null;
-                arg = getBeansOfType(valueType);
-            } else if (paramType.isArray() || paramType.equals(List.class) || paramType.equals(Set.class)) {
-                Class<?> componentType;
-                if (paramType.isArray()) {
-                    componentType = paramType.getComponentType();
-                    Collection<?> beans = getBeansOfType(componentType).values();
-                    arg = Array.newInstance(componentType, beans.size());
-
-                    int arrIndex = 0;
-                    for (Object bean : beans) {
-                        Array.set(arg, arrIndex++, componentType.cast(bean));
-                    }
-                } else { // paramType이 List 혹은 Set인 경우
-                    componentType = getGenericComponentType(param);
-                    Collection<?> beans = getBeansOfType(componentType).values();
-
-                    if (paramType.equals(List.class)) {
-                        arg = new ArrayList<>(beans);
-                    } else arg = new HashSet<>(beans);
-                }
-            } else {
-                try {
-                    arg = getBean(paramType);
-                } catch (NoUniqueBeanDefinitionException e) {
-                    try {
-                        arg = getBean(paramName);
-                    } catch (NoSuchBeanDefinitionException e2) {
-                        throw e2;
-                    }
-                }
-            }
-
-            args[argCount++] = arg;
+        for (int i = 0; i < args.length; i++) {
+            args[i] = resolveParameterDependency(dependsOn[i]);
         }
 
         Object bean = null;
@@ -186,6 +131,156 @@ public class DefaultListableBeanFactory implements ListableBeanFactory, BeanDefi
         }
 
         return bean;
+    }
+
+    private Object resolveParameterDependency(Parameter parameter) {
+        /*
+            ========================================================================
+            1차로
+                1. 타입이 정확히 일치하는 빈부터 찾아 리턴(해당 타입의 빈 후보가 1개일 때)
+                2. 빈 후보가 여러 개일 때 @Primary를 찾아 해당 빈을 리턴
+                    2-1. @Primary가 여러 개라면 NoUnique- 예외
+                3. @Primary가 적용된 빈이 없다면 빈 이름과 필드 네임(파라미터 이름)이 정확히 일치하는 것을 찾아 리턴
+                4. 그마저도 없고 제네릭 타입이 아닌 경우 NoSuch- 예외
+            ========================================================================
+         */
+        String requiredBeanName = parameter.getName();
+
+        ResolvableType resolvableType = ResolvableType.forType(parameter.getParameterizedType());
+        String[] candidateBeanNames = getBeanNamesForType(resolvableType);
+
+        String beanName = null;
+        if (candidateBeanNames.length == 1) {
+            beanName = candidateBeanNames[0];
+        } else if (candidateBeanNames.length > 1) {
+            // 후보가 여러 개인 경우 @Primary를 찾아 리턴
+            for (String candidateBeanName : candidateBeanNames) {
+                BeanDefinition beanDefinition = getBeanDefinition(candidateBeanName);
+                if (beanDefinition.isPrimary()) {
+                    if (beanName != null) {
+                        throw new NoUniqueBeanDefinitionException("ambiguous for Primary Bean Type '" + beanName + "'");
+                    }
+
+                    beanName = candidateBeanName;
+                }
+            }
+
+            // 빈 이름으로 찾아 리턴
+            beanName = Arrays.stream(candidateBeanNames)
+                    .filter(requiredBeanName::equals)
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        if (beanName != null) {
+            return getBean(beanName);
+        }
+
+        if (!isMultiBeanType(resolvableType)) {
+            // 배열, Map, List, Set과 같이 빈들을 조립해서 만들 수 있는 자료구조가 아닌 경우
+            throw new NoSuchBeanDefinitionException("bean type '" + resolvableType.getType() + "' is not found");
+        }
+
+        /*
+            ========================================================================
+            2차로 requiredType(주입해야할 빈, 찾아야할 빈 타입)이 Array, List, Set인 경우
+            제네릭 타입으로 일치하는 빈들을 찾아 각 자료구조의 객체로 만들어 리턴
+            ========================================================================
+         */
+        Object arg = null;
+        Class<?> requiredType = resolvableType.toClass();
+
+        if (Map.class.isAssignableFrom(requiredType)) {
+            ResolvableType keyType = resolvableType.getGeneric(0);
+
+            if (keyType.toClass() != String.class) {
+                throw new IllegalArgumentException("parameter '" + parameter.getName() + "' of type '" + keyType.toClass() +
+                        "'" +
+                        " is " +
+                        "not a string");
+            }
+        }
+
+        ResolvableType valueType = resolveActualGeneric(resolvableType);
+        String[] valueBeanNames = getBeanNamesForType(valueType);
+        List<String> validBeanNames = new ArrayList<>();
+        for (String name : valueBeanNames) {
+            if (!singletonBeanRegistry.isSingletonCurrentlyInCreation(name)) {
+                validBeanNames.add(name);
+            }
+        }
+        valueBeanNames = validBeanNames.toArray(new String[0]);
+
+        if (valueBeanNames.length == 0) {
+            throw new NoSuchBeanDefinitionException("No beans of type '" + valueType.getType() + "' found for multi-bean type '" + resolvableType.getType() + "'");
+        }
+
+        if (resolvableType.isArray()) {
+            arg = Array.newInstance(requiredType.getComponentType(), valueBeanNames.length);
+            for (int i = 0; i < valueBeanNames.length; i++) {
+                Array.set(arg, i, getBean(valueBeanNames[i]));
+            }
+        }
+
+        if (Map.class.isAssignableFrom(requiredType)) {
+            Map<String, Object> mapArg = new HashMap<>();
+            for (String valueBeanName : valueBeanNames) {
+                mapArg.put(valueBeanName, getBean(valueBeanName));
+            }
+            arg = mapArg;
+        }
+
+        if (Collection.class.isAssignableFrom(requiredType)) {
+            Collection<Object> collection = createCollection(requiredType);
+            for (String valueBeanName : valueBeanNames) {
+                collection.add(getBean(valueBeanName));
+            }
+
+            arg = collection;
+        }
+
+        if (arg == null) {
+            throw new NoSuchBeanDefinitionException("parameter '" + parameter.getName() + "' of type '" + requiredType + "'");
+        }
+
+        return arg;
+    }
+
+    /*
+        요구하는 타입이 Array, Map, Collection(List, Set)과 같은 타입인지 판별
+     */
+    public boolean isMultiBeanType(ResolvableType resolvableType) {
+        return resolvableType.isArray()
+                || Map.class.isAssignableFrom(resolvableType.toClass())
+                || Collection.class.isAssignableFrom(resolvableType.toClass());
+    }
+
+    /*
+        Array, Map, Collection(List, Set)의 실제 제네릭 타입을 리턴
+     */
+    private ResolvableType resolveActualGeneric(ResolvableType resolvedType) {
+        if (resolvedType.isArray()) { return resolvedType.getComponentType(); }
+        if (Map.class.isAssignableFrom(resolvedType.toClass())) { return resolvedType.getGeneric(1); }
+        return resolvedType.getGeneric(0);
+    }
+
+    private Collection<Object> createCollection(Class<?> requiredType) {
+        if (requiredType.isInterface() || Modifier.isAbstract(requiredType.getModifiers())) {
+            if (Set.class.isAssignableFrom(requiredType)) {
+                return new HashSet<>();
+            }
+
+            return new ArrayList<>();
+        }
+
+        try {
+            Constructor<?> constructor = requiredType.getDeclaredConstructor();
+            constructor.setAccessible(true);
+            //noinspection unchecked
+            return (Collection<Object>) constructor.newInstance();
+        } catch (Exception e) {
+            throw new BeanCreationException("Cannot instantiate collection type: " + requiredType, e);
+        }
     }
 
     @Override
@@ -269,6 +364,26 @@ public class DefaultListableBeanFactory implements ListableBeanFactory, BeanDefi
         List<String> beanNames = allBeanNamesByType.get(type);
         if (beanNames == null) {
             return new String[0];
+        }
+
+        return beanNames.toArray(new String[0]);
+    }
+
+    @Override
+    public String[] getBeanNamesForType(ResolvableType resolvableType) {
+        List<String> candidateBeanNames = this.allBeanNamesByType.get(resolvableType.toClass());
+        if (candidateBeanNames == null) {
+            return new String[0];
+        }
+
+        List<String> beanNames = new ArrayList<>();
+        for (String candidateBeanName : candidateBeanNames) {
+            BeanDefinition definition = this.beanDefinitionMap.get(candidateBeanName);
+            ResolvableType targetType = definition.getTargetType();
+
+            if (resolvableType.isAssignableFrom(targetType)) {
+                beanNames.add(candidateBeanName);
+            }
         }
 
         return beanNames.toArray(new String[0]);
