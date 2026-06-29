@@ -23,7 +23,11 @@ public class ClassPathBeanDefinitionScanner {
     private final BeanDefinitionRegistry registry;
 
     public ClassPathBeanDefinitionScanner(BeanDefinitionRegistry registry) {
-        this.cl = Thread.currentThread().getContextClassLoader();
+        this(Thread.currentThread().getContextClassLoader(),  registry);
+    }
+
+    public ClassPathBeanDefinitionScanner(ClassLoader cl, BeanDefinitionRegistry registry) {
+        this.cl = cl;
         this.registry = registry;
     }
 
@@ -55,7 +59,7 @@ public class ClassPathBeanDefinitionScanner {
             BeanDefinitionReaderUtils.registerBeanDefinition(beanDefinitionHolder, registry);
 
             if (beanDefinition.isConfigurationClass()) {
-                beanDefinitionList.addAll(parseAndRegisterBeanMethods(beanDefinitionHolder));
+                beanDefinitionList.addAll(parseFactoryBeanMethods(beanDefinitionHolder));
             }
         }
 
@@ -64,9 +68,9 @@ public class ClassPathBeanDefinitionScanner {
 
     /**
      * BeanDefinitionHolder의 BeanDefinition이 FactoryBean(@Configuration이 적용된 클래스)인 경우
-     * 클래스 내부에서 @Bean이 적용된 FactoryBeanMethod를 찾아 BeanDefinitionHolder를 만들고 BeanRegistry에 등록
+     * 클래스 내부에서 @Bean이 적용된 FactoryBeanMethod를 찾아 BeanDefinition를 만들어 리스트로 반환
      */
-    private List<BeanDefinition> parseAndRegisterBeanMethods(BeanDefinitionHolder beanDefinitionHolder) {
+    private List<BeanDefinition> parseFactoryBeanMethods(BeanDefinitionHolder beanDefinitionHolder) {
         BeanDefinition beanDefinition = beanDefinitionHolder.getBeanDefinition();
         if (!beanDefinition.isConfigurationClass()) {
             return Collections.EMPTY_LIST;
@@ -75,17 +79,16 @@ public class ClassPathBeanDefinitionScanner {
         Class<?> factoryBean = beanDefinition.getBeanType();
         String factoryBeanName = beanDefinitionHolder.getBeanName();
 
-        List<BeanDefinition> factoryBeanMethodDefinitionHolders = new ArrayList<>();
+        List<BeanDefinition> factoryBeanMethodDefinitions = new ArrayList<>();
         for (Method method : factoryBean.getMethods()) {
             if (!method.isAnnotationPresent(Bean.class)) {
                 continue;
             }
 
-            BeanDefinition factoryBeanMethodDefinition = DefaultBeanDefinition.of(method, factoryBeanName);
-            factoryBeanMethodDefinitionHolders.add(factoryBeanMethodDefinition);
+            factoryBeanMethodDefinitions.add(DefaultBeanDefinition.of(method, factoryBeanName));
         }
 
-        return factoryBeanMethodDefinitionHolders;
+        return factoryBeanMethodDefinitions;
     }
 
     private Set<BeanDefinition> findCandidateComponents(String basePackage) throws ClassNotFoundException {
@@ -142,5 +145,29 @@ public class ClassPathBeanDefinitionScanner {
         String packageName = annotation.annotationType().getPackageName();
         return packageName.startsWith("java.lang.annotation") ||
                 packageName.startsWith("jakarta.annotation");
+    }
+
+    public void registerConfigClass(List<Class<?>> configClasses) {
+        for (Class<?> configClass : configClasses) {
+            registerConfigClass(configClass);
+        }
+    }
+
+    public void registerConfigClass(Class<?> configClass) {
+        BeanDefinition configDefinition = DefaultBeanDefinition.of(configClass);
+        if (!configDefinition.isConfigurationClass()) {
+            throw new IllegalArgumentException(configClass.getName() + " is not a configuration class");
+        }
+
+        String configBeanName = BeanNameGenerator.generate(configDefinition);
+        BeanDefinitionHolder configBeanDefinitionHolder = new BeanDefinitionHolder(configBeanName, configDefinition);
+        BeanDefinitionReaderUtils.registerBeanDefinition(configBeanDefinitionHolder, registry);
+
+        List<BeanDefinition> factoryBeanMethods = parseFactoryBeanMethods(configBeanDefinitionHolder);
+        for (BeanDefinition factoryBeanMethod : factoryBeanMethods) {
+            String factoryBeanMethodName = BeanNameGenerator.generate(factoryBeanMethod);
+            BeanDefinitionHolder factoryBeanDefinitionHolder = new BeanDefinitionHolder(factoryBeanMethodName, factoryBeanMethod);
+            BeanDefinitionReaderUtils.registerBeanDefinition(factoryBeanDefinitionHolder, registry);
+        }
     }
 }

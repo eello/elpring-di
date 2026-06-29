@@ -10,6 +10,7 @@ import java.util.Map;
 public class GenericApplicationContext extends AbstractApplicationContext implements BeanDefinitionRegistry {
 
     private final DefaultListableBeanFactory beanFactory;
+    private final ClassLoader cl = Thread.currentThread().getContextClassLoader();
 
     public GenericApplicationContext() {
         this(new DefaultListableBeanFactory());
@@ -63,6 +64,11 @@ public class GenericApplicationContext extends AbstractApplicationContext implem
     @Override
     public <T> Map<String, T> getBeansOfType(Class<T> type) throws BeansException {
         return this.beanFactory.getBeansOfType(type);
+    }
+
+    @Override
+    public ClassLoader getClassLoader() {
+        return cl;
     }
 
     public void registerBean() {
