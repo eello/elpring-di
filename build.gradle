@@ -3,8 +3,8 @@ plugins {
     id 'maven-publish'
 }
 
-group = 'io.github.eello'
-version = '1.0-SNAPSHOT'
+group = 'com.github.eello'
+version = 'v1.4.1'
 
 java {
     sourceCompatibility = JavaVersion.VERSION_21 // 사용 중인 자바 버전
