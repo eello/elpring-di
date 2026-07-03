@@ -19,7 +19,7 @@
 
 1. **ClassPath 재귀 스캔**:
    - `ClassLoader`를 활용해 특정 패키지 하위의 모든 `.class` 파일을 탐색합니다.
-   - 클래스 상에 명시된 어노테이션을 감지하고 메타-어노테이션 분석을 통해 빈 등록 대상을 추출합니다.
+   - 클래스 상에 명시된 `@Component` 및 스테레오타입 어노테이션(`@Service`, `@Repository` 등)을 감지하고 메타-어노테이션 분석을 통해 빈 등록 대상을 추출합니다.
 2. **수동 빈 등록 기능 (`@Configuration` & `@Bean`)**:
    - `@Configuration` 어노테이션이 적용된 클래스 내부에서 `@Bean` 팩토리 메서드를 분석하여 수동으로 빈을 등록하고 의존 관계를 형성할 수 있습니다.
 3. **생성자 및 팩토리 메서드 기반 의존성 주입**:
@@ -31,7 +31,7 @@
    - `@Primary`가 없는 경우, 파라미터 변수명과 등록된 빈의 이름을 비교하여 일치하는 빈을 자동으로 주입합니다.
 6. **Eager & Lazy 초기화 지원**:
    - 일반 빈은 애플리케이션 시작 단계(`refresh`)에서 즉시 사전 생성(Pre-instantiation)됩니다.
-   - [@Lazy](file:///Users/jongseong/01.%20Projects/elpring/elpring-di/src/main/java/eello/elpring/di/annotation/Lazy.java)가 지정된 빈은 시작 시점에는 생성되지 않으며, 실제 빈이 요청되거나 참조되는 최초 시점에 지연 생성됩니다.
+   - `@Lazy`가 지정된 빈은 시작 시점에는 생성되지 않으며, 실제 빈이 요청되거나 참조되는 최초 시점에 지연 생성됩니다.
 7. **`ApplicationContextAware` 생명주기 인터페이스 지원**:
    - 컨테이너 초기화 완료 후, 해당 인터페이스를 구현한 빈에 애플리케이션 컨텍스트를 주입하는 라이프사이클 콜백을 제공합니다.
 8. **실시간 순환 참조 감지 (Circular Dependency Detection)**:
@@ -48,7 +48,9 @@ src/main/java/
         └── di/
             ├── annotation/
             │   ├── Bean.java                       # 수동 빈 팩토리 메서드 등록 마킹
-            │   ├── Component.java                  # 자동 빈 등록 마킹
+            │   ├── Component.java                  # 자동 빈 등록 기본 마킹
+            │   ├── Service.java                    # 비즈니스 서비스 계층 스테레오타입 마킹 (@Component 포함)
+            │   ├── Repository.java                 # 데이터 영속성 계층 스테레오타입 마킹 (@Component 포함)
             │   ├── Configuration.java              # 설정 클래스 지정 마킹
             │   ├── Lazy.java                       # 지연 초기화 지정
             │   └── Primary.java                    # 동일 타입 다중 빈 주입 시 우선순위 지정
@@ -109,7 +111,7 @@ AnnotationConfigApplicationContext 초기화
   ▼
 ClassPathBeanDefinitionScanner 패키지 스캔 & 수동 설정 클래스 등록
   ├─ basePackage 하위의 모든 .class 파일 재귀 탐색
-  ├─ @Component 어노테이션이 붙은 클래스 추출 후 BeanDefinition 등록
+  ├─ @Component, @Service, @Repository 등 어노테이션이 붙은 클래스 추출 후 BeanDefinition 등록
   ├─ @Configuration 어노테이션이 붙은 설정 클래스 및 내부 @Bean 메서드 파싱 후 BeanDefinition 등록
   └─ registerCustomConfiguration(List<Class<?>>) 호출 시 전달된 설정 클래스들의 BeanDefinition 등록
   │
@@ -140,17 +142,36 @@ AbstractApplicationContext.refresh() 수행
 
 ## 💻 사용 예제
 
-### 1. 빈 등록 대상 정의 (자동 컴포넌트 스캔)
-[@Component](file:///Users/jongseong/01.%20Projects/elpring/elpring-di/src/main/java/eello/elpring/di/annotation/Component.java) 어노테이션을 사용하여 빈으로 등록할 대상 클래스를 선언합니다.
+### 1. 빈 등록 대상 정의 (자동 컴포넌트 스캔 및 계층형 어노테이션)
+비즈니스 성격에 맞게 `@Service` 및 `@Repository` 어노테이션을 사용하여 빈으로 등록할 대상 클래스를 선언합니다. 이 어노테이션들은 내부적으로 메타-어노테이션 `@Component`를 포함하고 있어 컴포넌트 스캔 대상에 자동으로 잡힙니다.
 
+* **Repository 레이어**:
 ```java
 package eello.app.repository;
 
-import eello.elpring.di.annotation.Component;
+import eello.elpring.di.annotation.Repository;
 
-@Component
-public class ARepository implements Repository {
-    // 자동 스캔되어 빈으로 등록됩니다. 빈 이름: "aRepository"
+@Repository
+public class MemoryTodoRepository implements TodoRepository {
+    // 자동 스캔되어 빈으로 등록됩니다. 빈 이름: "memoryTodoRepository"
+}
+```
+
+* **Service 레이어**:
+```java
+package eello.app.service;
+
+import eello.elpring.di.annotation.Service;
+import eello.app.repository.TodoRepository;
+
+@Service
+public class TodoService {
+    private final TodoRepository todoRepository;
+
+    // 생성자 주입 방식으로 의존성이 자동 조립됩니다.
+    public TodoService(TodoRepository todoRepository) {
+        this.todoRepository = todoRepository;
+    }
 }
 ```
 
@@ -162,15 +183,15 @@ package eello.app.config;
 
 import eello.elpring.di.annotation.Bean;
 import eello.elpring.di.annotation.Configuration;
-import eello.app.repository.Repository;
-import eello.app.repository.ARepository;
+import eello.app.repository.TodoRepository;
+import eello.app.repository.MemoryTodoRepository;
 
 @Configuration
 public class AppConfig {
 
     @Bean
-    public Repository customRepository() {
-        return new ARepository();
+    public TodoRepository customTodoRepository() {
+        return new MemoryTodoRepository();
     }
 }
 ```
@@ -184,65 +205,12 @@ context.registerCustomConfiguration(List.of(ExternalConfig.class));
 context.refresh();
 ```
 
-### 4. 다중 구현체 처리 및 자동 조립 (Collection & Map 주입)
-동일 인터페이스를 구현한 여러 빈을 `@Primary` 없이 파라미터 변수명으로 매칭하거나, 컬렉션 자료구조로 한꺼번에 주입받을 수 있습니다.
-
-```java
-package eello.app.service;
-
-import eello.elpring.di.annotation.Component;
-import eello.app.repository.Repository;
-import java.util.List;
-import java.util.Map;
-
-@Component
-public class RoutingService {
-
-    private final Repository firstRepository; // 변수명이 "firstRepository"인 빈이 자동 매칭
-    private final List<Repository> allRepositories; // 등록된 모든 Repository 타입의 빈들이 List로 주입
-    private final Map<String, Repository> repositoryMap; // 빈 이름(String)을 Key로 하는 Map 형태로 주입
-
-    public RoutingService(
-            Repository firstRepository,
-            List<Repository> allRepositories,
-            Map<String, Repository> repositoryMap
-    ) {
-        this.firstRepository = firstRepository;
-        this.allRepositories = allRepositories;
-        this.repositoryMap = repositoryMap;
-    }
-}
-```
-
-### 5. 애플리케이션 실행 및 사용
-[ElpringApplication](file:///Users/jongseong/01.%20Projects/elpring/elpring-di/src/main/java/eello/elpring/di/boot/ElpringApplication.java)을 사용하여 컨테이너를 구동하고 필요한 빈을 꺼내어 사용할 수 있습니다.
-
-```java
-package eello.app;
-
-import eello.elpring.di.boot.ElpringApplication;
-import eello.elpring.di.context.ConfigurableApplicationContext;
-import eello.app.service.RoutingService;
-
-public class SimpleDIContainer {
-    public static void main(String[] args) {
-        // 메인 애플리케이션 클래스의 패키지를 루트 삼아 컴포넌트 스캔 시작 및 기동
-        ConfigurableApplicationContext context = ElpringApplication.run(SimpleDIContainer.class);
-
-        // 컨테이너로부터 주입 완료된 빈을 획득
-        RoutingService routingService = context.getBean(RoutingService.class);
-    }
-}
-```
-
 ---
 
 ## 🚫 제약 사항 및 예외 처리 규약
 
-안정적인 경량 기동을 위해 다음과 같은 명확한 제약 사항과 예외를 가집니다:
-
 ### 1. 프레임워크 제약 사항
-- **빈 정의 수집**: 클래스 상에 명시된 [@Component](file:///Users/jongseong/01.%20Projects/elpring/elpring-di/src/main/java/eello/elpring/di/annotation/Component.java)(및 이를 포함하는 커스텀 어노테이션)과 `@Configuration` 클래스의 `@Bean` 메서드를 수집합니다.
+- **빈 정의 수집**: 클래스 상에 명시된 `@Component` 및 이를 내부적으로 메타-어노테이션으로 가지고 있는 `@Service`, `@Repository`, `@Controller` 등과 `@Configuration` 클래스의 `@Bean` 메서드를 수집합니다.
 - **의존성 주입 방식**: 오직 **생성자 주입(Constructor Injection)** 및 **팩토리 메서드 파라미터 주입**만 제공합니다. 필드 주입이나 세터 주입은 지원하지 않습니다.
 - **단일 생성자 가정**: 컴포넌트 스캔 대상 클래스는 오직 1개의 public 생성자만 가지고 있다고 가정합니다.
 - **다형성 상속 지원**: 단순 클래스 타입 매핑 외에 구현하는 인터페이스 계층 및 상위 슈퍼클래스 계층을 순회하여 상위 타입 명세로도 조회(`getBean`)가 가능합니다.
@@ -282,4 +250,4 @@ public class SimpleDIContainer {
 
 `elpring-di`는 견고한 품질 유지를 위해 **인터페이스 규약 테스트(Contract Test)** 패턴을 채택하고 있으며, 테스트 전용 피스처를 완벽하게 격리해 운영 중입니다.
 
-자세한 테스트 수행 방법과 아키텍처 전략에 대해서는 테스트 경로 아래의 **[TESTING.md](file:///Users/jongseong/01.%20Projects/elpring/elpring-di/src/test/TESTING.md)** 문서를 참조하십시오.
+자세한 테스트 수행 방법과 아키텍처 전략에 대해서는 테스트 경로 아래의 **[TESTING.md](file:///Users/jongseong/01.%20Projects/elpring-framework/elpring-di/src/test/TESTING.md)** 문서를 참조하십시오.
