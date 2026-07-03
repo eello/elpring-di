@@ -14,7 +14,12 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class DefaultListableBeanFactory implements ListableBeanFactory, BeanDefinitionRegistry {
+
+    private static final Logger log = LoggerFactory.getLogger(DefaultListableBeanFactory.class);
 
     private ApplicationContext applicationContext;
     private final SingletonBeanRegistry singletonBeanRegistry;
@@ -98,9 +103,15 @@ public class DefaultListableBeanFactory implements ListableBeanFactory, BeanDefi
 
         singletonBeanRegistry.setCurrentlyInCreation(beanName);
 
+        if (log.isDebugEnabled()) {
+            log.debug("Creating shared instance of singleton bean '{}'", beanName);
+        }
+
         BeanDefinition definition = beanDefinitionMap.get(beanName);
         if (definition.isLazyInit()) {
-            System.out.println("'" + beanName + "' is lazy loading");
+            if (log.isDebugEnabled()) {
+                log.debug("'{}' is lazy loading", beanName);
+            }
         }
 
         Parameter[] dependsOn = definition.getDependsOn();
@@ -125,7 +136,7 @@ public class DefaultListableBeanFactory implements ListableBeanFactory, BeanDefi
                 ((ApplicationContextAware) bean).setApplicationContext(applicationContext);
             }
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-            e.printStackTrace();
+            log.error("Failed to instantiate bean '{}'", beanName, e);
         } finally {
             singletonBeanRegistry.completeCurrentlyInCreation(beanName);
         }
@@ -144,6 +155,9 @@ public class DefaultListableBeanFactory implements ListableBeanFactory, BeanDefi
                 4. 그마저도 없고 제네릭 타입이 아닌 경우 NoSuch- 예외
             ========================================================================
          */
+        if (log.isTraceEnabled()) {
+            log.trace("Resolving parameter dependency '{}' for bean...", parameter.getName());
+        }
         String requiredBeanName = parameter.getName();
 
         ResolvableType resolvableType = ResolvableType.forType(parameter.getParameterizedType());
@@ -301,6 +315,10 @@ public class DefaultListableBeanFactory implements ListableBeanFactory, BeanDefi
 
     @Override
     public void registerBeanDefinition(String beanName, BeanDefinition beanDefinition) {
+        if (log.isDebugEnabled()) {
+            log.debug("Registering bean definition [{}] for class [{}]", beanName, beanDefinition.getBeanType().getName());
+        }
+
         BeanDefinition existingDefinition = this.getBeanDefinition(beanName);
         if (existingDefinition != null) {
             if (existingDefinition.equals(beanDefinition)) {

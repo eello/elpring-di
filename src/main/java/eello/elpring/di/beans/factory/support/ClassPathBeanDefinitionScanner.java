@@ -13,11 +13,16 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.*;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * basePackages 경로 안에 있는 모든 클래스 중 빈 등록 대상의 클래스들을
  * BeanDefinition 으로 만들고 BeanDefinitionRegistry 에 등록
  */
 public class ClassPathBeanDefinitionScanner {
+
+    private static final Logger log = LoggerFactory.getLogger(ClassPathBeanDefinitionScanner.class);
 
     private final ClassLoader cl;
     private final BeanDefinitionRegistry registry;
@@ -97,6 +102,9 @@ public class ClassPathBeanDefinitionScanner {
 
 		for (Class<?> clazz : classes) {
 			if (!clazz.isAnnotation() && isComponent(clazz)) {
+				if (log.isDebugEnabled()) {
+					log.debug("Identified candidate component class: [{}]", clazz.getName());
+				}
 				beanDefinitions.add(DefaultBeanDefinition.of(clazz));
 			}
 		}

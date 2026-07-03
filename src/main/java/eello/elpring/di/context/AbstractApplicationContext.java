@@ -9,7 +9,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public abstract class AbstractApplicationContext implements ConfigurableApplicationContext {
+
+    private static final Logger log = LoggerFactory.getLogger(AbstractApplicationContext.class);
 
     public abstract DefaultListableBeanFactory getBeanFactory();
 
@@ -36,6 +41,9 @@ public abstract class AbstractApplicationContext implements ConfigurableApplicat
     // BeanDefinitionRegistry 에 등록된 빈 정보(BeanDefinition)를 읽고 실제 빈 인스턴스를 생성
     @Override
     public void refresh() {
+        long startTime = System.currentTimeMillis();
+        log.info("Refreshing ApplicationContext");
+
         DefaultListableBeanFactory beanFactory = this.getBeanFactory();
 
         // 빈 등록 순서 결정 후 인스턴스 생성 후 등록
@@ -70,5 +78,24 @@ public abstract class AbstractApplicationContext implements ConfigurableApplicat
                 beanFactory.getBean(normalBean);
             }
         }
+
+        int frameworkBeanCount = 0;
+        int appBeanCount = 0;
+
+        for (String beanName : beanNames) {
+            BeanDefinition beanDefinition = beanFactory.getBeanDefinition(beanName);
+            String className = beanDefinition.getBeanType().getName();
+            
+            if (className.startsWith("eello.elpring.di") || 
+                className.startsWith("eello.elpring.web") || 
+                className.startsWith("eello.elpring.boot")) {
+                frameworkBeanCount++;
+            } else {
+                appBeanCount++;
+            }
+        }
+
+        log.info("ApplicationContext refreshed in {} ms. Total beans: {} (Framework: {}, Application: {})", 
+                 System.currentTimeMillis() - startTime, beanNames.length, frameworkBeanCount, appBeanCount);
     }
 }

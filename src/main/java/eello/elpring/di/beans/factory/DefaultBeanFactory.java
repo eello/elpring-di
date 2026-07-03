@@ -10,7 +10,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class DefaultBeanFactory implements LegacyBeanFactory {
+
+	private static final Logger log = LoggerFactory.getLogger(DefaultBeanFactory.class);
 
 	private final SingletonBeanRegistry singletonBeanRegistry;
 	private final Map<String, BeanDefinition> beanDefinitionMapByName;
@@ -50,13 +55,7 @@ public class DefaultBeanFactory implements LegacyBeanFactory {
 			putToBeanDefinitionMapByType(interfaceType, def);
 		}
 
-		StringBuilder log = new StringBuilder().append("[")
-				.append(def.getBeanTypeName())
-				.append("] - '")
-				.append(def.getBeanClassName())
-				.append("' 등록.");
-
-		System.out.println(log);
+		log.debug("[{}] - '{}' 등록.", def.getBeanTypeName(), def.getBeanClassName());
 	}
 
 	private Object createBean(BeanDefinition def) throws

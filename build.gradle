@@ -1,5 +1,5 @@
 plugins {
-    id 'java'
+    id 'java-library'
     id 'maven-publish'
 }
 
@@ -29,6 +29,9 @@ repositories {
 }
 
 dependencies {
+    api 'org.slf4j:slf4j-api:2.0.9'
+    testImplementation 'org.slf4j:slf4j-simple:2.0.9'
+
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }

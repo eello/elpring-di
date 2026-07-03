@@ -4,7 +4,12 @@ import eello.elpring.di.beans.factory.support.ClassPathBeanDefinitionScanner;
 
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class AnnotationConfigApplicationContext extends GenericApplicationContext implements AnnotationConfigRegistry {
+
+    private static final Logger log = LoggerFactory.getLogger(AnnotationConfigApplicationContext.class);
 
     private final ClassPathBeanDefinitionScanner scanner;
 
@@ -21,11 +26,11 @@ public class AnnotationConfigApplicationContext extends GenericApplicationContex
     @Override
     public void scan(String... basePackages) {
         try {
-            System.out.println("Scanning " + basePackages.length + " application context");
+            log.info("Scanning {} base package(s) for application context", basePackages.length);
             this.scanner.scan(basePackages);
-            System.out.println("Completed Scanning " + basePackages.length + " application context");
+            log.info("Completed scanning {} base package(s)", basePackages.length);
         } catch (ClassNotFoundException e) {
-            e.printStackTrace();
+            log.error("Failed to scan base packages: {}", (Object) basePackages, e);
         }
     }
 
@@ -33,6 +38,16 @@ public class AnnotationConfigApplicationContext extends GenericApplicationContex
      * ClassPathBeanDefinitionScanner에 @Configuration 클래스를 넘겨 추가로 빈 정의를 등록하는 메서드
      */
     public void registerCustomConfiguration(List<Class<?>> configs) {
+        if (configs == null || configs.isEmpty()) {
+            log.info("No custom auto-configuration classes to register");
+            return;
+        }
+        log.info("Registering {} custom configuration class(es)", configs.size());
+        if (log.isDebugEnabled()) {
+            for (Class<?> config : configs) {
+                log.debug("Registering custom configuration class [{}]", config.getName());
+            }
+        }
         this.scanner.registerConfigClass(configs);
     }
 }
