@@ -109,20 +109,28 @@ public class ClassPathBeanDefinitionScanner {
 
         try {
             String path = basePackage.replace(".", "/");
-            URL resource = cl.getResource(path);
-            File directory = new File(resource.toURI());
-
-            for (File file : directory.listFiles()) {
-                if (file.isDirectory()) {
-                    String childPackageName = basePackage + "." + file.getName();
-                    classes.addAll(findAllClasses(childPackageName));
-                } else if (file.getName().endsWith(".class")) {
-                    String className = basePackage + '.' + file.getName().substring(0, file.getName().length() - 6);
-                    classes.add(Class.forName(className));
+            java.util.Enumeration<URL> resources = cl.getResources(path);
+            while (resources.hasMoreElements()) {
+                URL resource = resources.nextElement();
+                File directory = new File(resource.toURI());
+                
+                if (directory.exists() && directory.isDirectory()) {
+                    File[] files = directory.listFiles();
+                    if (files != null) {
+                        for (File file : files) {
+                            if (file.isDirectory()) {
+                                String childPackageName = basePackage + "." + file.getName();
+                                classes.addAll(findAllClasses(childPackageName));
+                            } else if (file.getName().endsWith(".class")) {
+                                String className = basePackage + '.' + file.getName().substring(0, file.getName().length() - 6);
+                                classes.add(Class.forName(className));
+                            }
+                        }
+                    }
                 }
             }
-        } catch (URISyntaxException e) {
-            e.printStackTrace();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
 
         return classes;
